@@ -6,6 +6,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout Code
@@ -14,7 +17,7 @@ jobs:
       - name: Configure AWS OIDC Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::339495302685:role/github-ecr-role  # Replace with your role ARN if needed
+          role-to-assume: arn:aws:iam::339495302685:role/github-ecr-role
           aws-region: ap-south-1
 
       - name: Deploy CloudFormation Stack
