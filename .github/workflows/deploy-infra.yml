@@ -28,7 +28,8 @@ jobs:
             --stack-name microservices-stack \
             --template-file cloudformation.yml \
             --capabilities CAPABILITY_NAMED_IAM \
-            --region ap-south-1
+            --region ap-south-1 \
+            --parameter-overrides KeyName=cloudformationdeploy
           echo "========= CloudFormation Deployment Complete ======"
 
       - name: SSH and Deploy Containers with Secrets
