@@ -1,0 +1,46 @@
+name: Deploy CloudFormation and Microservices
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy CloudFormation Stack
+        run: |
+          set -x
+          echo "========= Deploying CloudFormation Stack ========="
+          aws cloudformation deploy \
+            --stack-name microservices-stack \
+            --template-file cloudformation.yml \
+            --capabilities CAPABILITY_NAMED_IAM
+          echo "========= CloudFormation Deployment Complete ======"
+
+      - name: SSH and Deploy Containers with Secrets
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -ex
+            echo "========= Changing to deployment-infra directory ========="
+            cd /home/ec2-user/deployment-infra
+
+            echo "========= Writing .env file ========="
+            cat > .env <<EOF
+            MYSQL_DB=${{ secrets.MYSQL_DB }}
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            # Add more secrets as needed
+            EOF
+            echo "[INFO] .env file created with secrets"
+
+            echo "========= Starting deploy.sh script ========="
+            cd scripts
+            chmod +x deploy.sh
+            ./deploy.sh
+            echo "[INFO] deploy.sh script execution completed"
