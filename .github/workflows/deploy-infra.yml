@@ -35,9 +35,10 @@ jobs:
             --template-file cloudformation.yml \
             --capabilities CAPABILITY_NAMED_IAM \
             --region ap-south-1 \
+            --no-fail-on-empty-changeset \
             --parameter-overrides KeyName=cloudformationdeploy || (
-            echo "Deployment failed. Showing stack events:" ;
-            aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 ;
+            echo "Deployment failed. Showing stack CREATE_FAILED reasons:" ;
+            aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 --query "StackEvents[?ResourceStatus=='CREATE_FAILED'].{Resource:LogicalResourceId,Reason:ResourceStatusReason}" --output table ;
             exit 1 )
           echo "========= CloudFormation Deployment Complete ======"
 
