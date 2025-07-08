@@ -29,7 +29,10 @@ jobs:
             --template-file cloudformation.yml \
             --capabilities CAPABILITY_NAMED_IAM \
             --region ap-south-1 \
-            --parameter-overrides KeyName=cloudformationdeploy
+            --parameter-overrides KeyName=cloudformationdeploy || (
+            echo "Deployment failed. Showing stack events:" ;
+            aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 ;
+            exit 1 )
           echo "========= CloudFormation Deployment Complete ======"
 
       - name: SSH and Deploy Containers with Secrets
