@@ -17,7 +17,8 @@ jobs:
           aws cloudformation deploy \
             --stack-name microservices-stack \
             --template-file cloudformation.yml \
-            --capabilities CAPABILITY_NAMED_IAM
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region ap-south-1a
           echo "========= CloudFormation Deployment Complete ======"
 
       - name: SSH and Deploy Containers with Secrets
