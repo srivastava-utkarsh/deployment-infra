@@ -6,11 +6,20 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
     permissions:
       id-token: write
       contents: read
 
     steps:
+      - name: Clean AWS environment
+        run: |
+          rm -rf ~/.aws || true
+          unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION
+
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -19,6 +28,8 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::339495302685:role/github-ecr-role
           aws-region: ap-south-1
+          role-session-name: GitHubActionsSession-${{ github.run_id }}
+          role-duration-seconds: 3600
 
       - name: Deploy CloudFormation Stack
         run: |
@@ -36,6 +47,7 @@ jobs:
             --capabilities CAPABILITY_NAMED_IAM \
             --region ap-south-1 \
             --no-fail-on-empty-changeset \
+            --force-upload \
             --parameter-overrides KeyName=cloudformationdeploy AmiId=ami-018046b953a698135 || (
             echo "Deployment failed. Showing stack CREATE_FAILED reasons:" ;
             aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 --query "StackEvents[?ResourceStatus=='CREATE_FAILED'].{Resource:LogicalResourceId,Reason:ResourceStatusReason}" --output table ;
