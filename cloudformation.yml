@@ -1,3 +1,14 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Microservices VPC with a single public subnet, EC2 in public subnet, parameterized KeyName and AmiId.
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH
+    Type: AWS::EC2::KeyPair::KeyName
+  AmiId:
+    Description: AMI ID for EC2 instance (public Amazon Linux 2 recommended for ap-south-1)
+    Type: AWS::EC2::Image::Id
+
 Resources:
   MicroservicesVPC:
     Type: AWS::EC2::VPC
@@ -77,16 +88,16 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      ImageId: ami-0d03cb826412c6b0f # Example: latest Amazon Linux 2 in ap-south-1
+      ImageId: !Ref AmiId
       KeyName: !Ref KeyName
-      SubnetId: !Ref PublicSubnet    # <- Place in public subnet
+      SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
         - !Ref MicroservicesSG
       Tags:
         - Key: Name
           Value: microservices-ec2
 
-Parameters:
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH
-    Type: AWS::EC2::KeyPair::KeyName
+Outputs:
+  EC2PublicIP:
+    Description: Public IP address of the microservices EC2 instance
+    Value: !GetAtt MicroservicesEC2.PublicIp
