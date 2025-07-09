@@ -141,7 +141,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      ImageId: ami-00022ccb33529c637 # Amazon Linux 2 (ap-south-1, update latest)
+      ImageId: ami-0d03cb826412c6b0f # Amazon Linux 2 (ap-south-1, update latest)
       KeyName: !Ref KeyName
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
