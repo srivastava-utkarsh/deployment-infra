@@ -1,14 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Complete Microservices Infrastructure (auth, user, gateway, MySQL, Kafka)
-
-Parameters:
-  KeyName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: EC2 SSH KeyPair Name (Create in EC2 console first)
-
 Resources:
-
-  ## VPC Creation
   MicroservicesVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -17,35 +7,25 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: microservices-vpc
+          Value: MicroservicesVPC
 
-  ## Public Subnet (For Gateway)
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MicroservicesVPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: ap-south-1a
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: public-subnet
-
-  ## Private Subnet (For Microservices, Kafka, MySQL)
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref MicroservicesVPC
-      CidrBlock: 10.0.2.0/24
       AvailabilityZone: ap-south-1a
-      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: private-subnet
+          Value: PublicSubnet
 
-  ## Internet Gateway (Allows public internet traffic)
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MicroservicesIGW
 
   AttachInternetGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -53,24 +33,13 @@ Resources:
       VpcId: !Ref MicroservicesVPC
       InternetGatewayId: !Ref InternetGateway
 
-  ## NAT Gateway (allows internet access from private subnet for package updates)
-  NatEIP:
-    Type: AWS::EC2::EIP
-    DependsOn: AttachInternetGateway
-    Properties:
-      Domain: vpc
-
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatEIP.AllocationId
-      SubnetId: !Ref PublicSubnet
-
-  ## Route Tables
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref MicroservicesVPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -80,35 +49,16 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnetRouteAssociation:
+  PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref MicroservicesVPC
-
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
-
-  PrivateSubnetRouteAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet
-      RouteTableId: !Ref PrivateRouteTable
-
-  ## Security Group for EC2
   MicroservicesSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow SSH and required microservices ports
+      GroupDescription: Enable SSH and app traffic
       VpcId: !Ref MicroservicesVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -117,40 +67,26 @@ Resources:
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 9897
-          ToPort: 9899
+          ToPort: 9897
           CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 9092
-          ToPort: 9092
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 2181
-          ToPort: 2181
-          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: MicroservicesSG
 
-  ## EC2 Instance
   MicroservicesEC2:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      ImageId: ami-0d03cb826412c6b0f # Amazon Linux 2 (ap-south-1, update latest)
+      ImageId: ami-0d03cb826412c6b0f # Example: latest Amazon Linux 2 in ap-south-1
       KeyName: !Ref KeyName
-      SubnetId: !Ref PrivateSubnet
+      SubnetId: !Ref PublicSubnet    # <- Place in public subnet
       SecurityGroupIds:
         - !Ref MicroservicesSG
       Tags:
         - Key: Name
           Value: microservices-ec2
 
-Outputs:
-  EC2PrivateIP:
-    Description: "Private IP of EC2 instance"
-    Value: !GetAtt MicroservicesEC2.PrivateIp
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH
+    Type: AWS::EC2::KeyPair::KeyName
