@@ -41,6 +41,15 @@ jobs:
             exit 1
           fi
 
+      - name: Delete old stack if in ROLLBACK_COMPLETE
+        run: |
+          STATUS=$(aws cloudformation describe-stacks --stack-name microservices-stack --region ap-south-1 --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "DELETE")
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Deleting stuck stack before redeploying..."
+            aws cloudformation delete-stack --stack-name microservices-stack --region ap-south-1
+            aws cloudformation wait stack-delete-complete --stack-name microservices-stack --region ap-south-1
+          fi
+
       - name: Deploy CloudFormation Stack
         run: |
           set -x
@@ -90,7 +99,7 @@ jobs:
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ steps.get_ec2_output.outputs.EC2_HOST }}
+          host: ${{ env.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
