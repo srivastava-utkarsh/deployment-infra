@@ -97,11 +97,11 @@ Resources:
         - Key: Name
           Value: microservices-ec2
 
-  Outputs:
-    EC2PublicIP:
-      Description: Public IP address of the microservices EC2 instance
-      Value: !GetAtt MicroservicesEC2.PublicIp
+Outputs:
+  EC2PublicIP:
+    Description: Public IP address of the microservices EC2 instance
+    Value: !GetAtt MicroservicesEC2.PublicIp
 
-    EC2PublicDNS:
-      Description: Public DNS name of the microservices EC2 instance
-      Value: !GetAtt MicroservicesEC2.PublicDnsName
+  EC2PublicDNS:
+    Description: Public DNS name of the microservices EC2 instance
+    Value: !GetAtt MicroservicesEC2.PublicDnsName
