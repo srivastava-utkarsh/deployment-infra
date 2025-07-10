@@ -67,13 +67,28 @@ jobs:
             --region ap-south-1 \
             --no-fail-on-empty-changeset \
             --force-upload \
-            --parameter-overrides KeyName=cloudformationdeploy --debug || (
-            echo "Deployment failed. Showing stack CREATE_FAILED reasons:" ;
-            aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 --query "StackEvents[?ResourceStatus=='CREATE_FAILED'].{Resource:LogicalResourceId,Reason:ResourceStatusReason}" --output table ;
-            exit 1 )
-          echo "========= CloudFormation Deployment Complete ======"
-          aws cloudformation describe-stacks --stack-name microservices-stack --region ap-south-1 \
-            --query "Stacks[0].Outputs" --output table
+            --parameter-overrides KeyName=cloudformationdeploy
+            echo "========= CloudFormation Deployment Complete ======"
+            aws cloudformation describe-stacks --stack-name microservices-stack --region ap-south-1 \
+              --query "Stacks[0].Outputs" --output table
+
+      - name: Print CloudFormation Stack Events (on failure)
+        if: failure()
+        run: |
+          echo "========= CloudFormation CREATE_FAILED Events ========="
+          aws cloudformation describe-stack-events \
+            --stack-name $STACK_NAME \
+            --region $AWS_REGION \
+            --query "StackEvents[?ResourceStatus=='CREATE_FAILED'].[LogicalResourceId, ResourceStatusReason]" \
+            --output table
+
+      - name: Print EC2 Console Output (on failure)
+        if: failure()
+        run: |
+          INSTANCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --region $AWS_REGION --logical-resource-id MicroservicesEC2 --query 'StackResources[0].PhysicalResourceId' --output text)
+          echo "EC2 Instance ID: $INSTANCE_ID"
+          aws ec2 get-console-output --instance-id $INSTANCE_ID --region $AWS_REGION --output text || true
+
 
       - name: Print CloudFormation Stack Events (Always)
         if: always()
