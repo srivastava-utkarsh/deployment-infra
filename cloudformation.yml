@@ -96,6 +96,7 @@ Resources:
       Tags:
         - Key: Name
           Value: microservices-ec2
+      AssociatePublicIpAddress: true
 
 Outputs:
   EC2PublicIP:
