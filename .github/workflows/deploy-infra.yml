@@ -64,12 +64,23 @@ jobs:
             --stack-name microservices-stack \
             --region ap-south-1 \
             --query "StackEvents[0:20].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
-            --output table || echo "No events found (stack may not exist yet)."      
+            --output table || echo "No events found (stack may not exist yet)."
+
+      - name: Get EC2 Public DNS
+        id: get-ec2-host
+        run: |
+          HOST=$(aws cloudformation describe-stacks \
+            --stack-name microservices-stack \
+            --region ap-south-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='EC2PublicDNS'].OutputValue" \
+            --output text)
+          echo "EC2_HOST=$HOST" >> $GITHUB_ENV
+          echo "Detected EC2 Host: $HOST"
 
       - name: SSH and Deploy Containers with Secrets
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ env.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
