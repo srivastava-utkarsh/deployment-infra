@@ -76,7 +76,7 @@ jobs:
             --query "StackEvents[0:20].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
             --output table || echo "No events found (stack may not exist yet)."
 
-      - name: Get EC2 Public DNS
+      - name: Get EC2 Public DNS from stack output
         id: get-ec2-host
         run: |
           HOST=$(aws cloudformation describe-stacks \
@@ -87,27 +87,31 @@ jobs:
           echo "EC2_HOST=$HOST" >> $GITHUB_ENV
           echo "Detected EC2 Host: $HOST"
 
-      - name: SSH and Deploy Containers with Secrets
+      - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.EC2_HOST }}
+          host: ${{ steps.get_ec2_output.outputs.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -ex
-            echo "========= Changing to deployment-infra directory ========="
-            cd /home/ec2-user/deployment-infra
+            #!/bin/bash
+            set -e
+            echo "===== Installing git if not present ====="
+            if ! command -v git &> /dev/null; then
+              sudo yum install git -y
+            fi
+            echo "===== Cloning repo if not present ====="
+            cd /home/ec2-user
+            if [ ! -d deployment-infra ]; then
+              git clone https://github.com/srivastava-utkarsh/deployment-infra.git
+            fi
+            cd deployment-infra
+            echo "===== Setting up Docker & Compose ====="
+            sudo yum install -y docker
+            sudo systemctl start docker
+            sudo usermod -aG docker ec2-user
+            # (optional, if using compose v2 as plugin, install that here)
+            echo "===== Running deploy.sh ====="
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
 
-            echo "========= Writing .env file ========="
-            cat > .env <<EOF
-            MYSQL_DB=${{ secrets.MYSQL_DB }}
-            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-            # Add more secrets as needed
-            EOF
-            echo "[INFO] .env file created with secrets"
-
-            echo "========= Starting deploy.sh script ========="
-            cd scripts
-            chmod +x deploy.sh
-            ./deploy.sh
-            echo "[INFO] deploy.sh script execution completed"
