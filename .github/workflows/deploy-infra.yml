@@ -67,7 +67,7 @@ jobs:
             --region ap-south-1 \
             --no-fail-on-empty-changeset \
             --force-upload \
-            --parameter-overrides KeyName=cloudformationdeploy || (
+            --parameter-overrides KeyName=cloudformationdeploy --debug || (
             echo "Deployment failed. Showing stack CREATE_FAILED reasons:" ;
             aws cloudformation describe-stack-events --stack-name microservices-stack --region ap-south-1 --query "StackEvents[?ResourceStatus=='CREATE_FAILED'].{Resource:LogicalResourceId,Reason:ResourceStatusReason}" --output table ;
             exit 1 )
@@ -95,6 +95,13 @@ jobs:
             --output text)
           echo "EC2_HOST=$HOST" >> $GITHUB_ENV
           echo "Detected EC2 Host: $HOST"
+
+      - name: Sanity check for EC2 instance before SSH
+        run: |
+          if [ -z "$EC2_HOST" ]; then
+            echo "No EC2 instance detected (CloudFormation failed). Skipping SSH deploy."
+            exit 1
+          fi
 
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
