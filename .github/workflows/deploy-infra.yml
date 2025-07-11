@@ -35,6 +35,14 @@ jobs:
           role-session-name: GitHubActionsSession-${{ github.run_id }}
           role-duration-seconds: 3600
 
+      - name: Debug print secrets (NOT FOR PRODUCTION)
+        run: |
+          echo "MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}"
+          echo "MYSQL_DB: ${{ secrets.MYSQL_DB }}"
+          echo "Exiting intentionally after printing secrets."
+          exit 1
+
+
       - name: ECR Login
         uses: aws-actions/amazon-ecr-login@v2
 
