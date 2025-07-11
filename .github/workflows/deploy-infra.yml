@@ -159,19 +159,29 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            mkdir -p /home/ec2-user/deployment-infra
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ec2-user/deployment-infra/.env
-            echo "MYSQL_DB=${{ secrets.MYSQL_DB }}" >> /home/ec2-user/deployment-infra/.env
-            chmod 600 /home/ec2-user/deployment-infra/.env
-            cd /home/ec2-user/deployment-infra
-            if [ -d .git ]; then
-              echo "[INFO] Repo already exists, pulling latest changes."
-              git pull
-            else
-              echo "[INFO] Repo missing or corrupted, recloning."
-              rm -rf /home/ec2-user/deployment-infra/*
-              git clone https://github.com/srivastava-utkarsh/deployment-infra.git .
+            TARGET_DIR=/home/ec2-user/deployment-infra
+            REPO_URL=https://github.com/srivastava-utkarsh/deployment-infra.git
+            echo "[INFO] Making sure deployment-infra repo is up-to-date …"
+            if ssh -qT git@github.com 2>/dev/null; then
+              echo "[INFO] SSH key already added to known_hosts."
             fi
-            chmod +x ./deploy.sh
-            ./deploy.sh
+            if [ -d "$TARGET_DIR/.git" ]; then
+              # Directory exists **and** is a git repo ⇒ just pull
+              echo "[INFO] Repo exists, pulling latest changes."
+              git -C "$TARGET_DIR" pull --ff-only
+            else
+              # Remove directory entirely (safer than rm -rf DIR/*)
+              echo "[INFO] Repo missing or corrupted. Recloning."
+              rm -rf "$TARGET_DIR"
+              git clone "$REPO_URL" "$TARGET_DIR"
+            fi
+            # create .env (overwrite each time to avoid stale values)
+            cat > "$TARGET_DIR/.env" <<EOF
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            MYSQL_DB=${{ secrets.MYSQL_DB }}
+            EOF
+            chmod 600 "$TARGET_DIR/.env"
+            # run deploy script
+            chmod +x "$TARGET_DIR/deploy.sh"
+            "$TARGET_DIR/deploy.sh"
 
