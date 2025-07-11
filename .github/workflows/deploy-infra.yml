@@ -183,6 +183,8 @@ jobs:
             MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
             MYSQL_DB=${MYSQL_DB}
             EOF
+            echo "[INFO] Dumping .env file for verification:"
+            cat "$TARGET_DIR/.env"
             chmod 600 "$TARGET_DIR/.env"
             # -------- 4. run deploy script --------------
             chmod +x "$TARGET_DIR/deploy.sh"
