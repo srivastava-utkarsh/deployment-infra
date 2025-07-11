@@ -38,6 +38,23 @@ jobs:
       - name: ECR Login
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Clone all microservice repos
+        run: |
+          git clone https://github.com/srivastava-utkarsh/authservice.git
+          git clone https://github.com/srivastava-utkarsh/gateway.git
+          git clone https://github.com/srivastava-utkarsh/userservice.git
+
+      - name: Build and push Docker images to ECR
+        run: |
+          for repo in authservice gateway userservice; do
+            cd $repo
+            docker build -t 339495302685.dkr.ecr.ap-south-1.amazonaws.com/$repo:latest .
+            aws ecr describe-repositories --repository-names $repo || aws ecr create-repository --repository-name $repo
+            docker push 339495302685.dkr.ecr.ap-south-1.amazonaws.com/$repo:latest
+            cd ..
+          done
+
+
       - name: Validate CloudFormation Template
         run: aws cloudformation validate-template --template-body file://cloudformation.yml --region ap-south-1
 
@@ -127,6 +144,9 @@ jobs:
 
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DB: ${{ secrets.MYSQL_DB }}
         with:
           host: ${{ env.EC2_HOST }}
           username: ec2-user
@@ -144,6 +164,9 @@ jobs:
               git clone https://github.com/srivastava-utkarsh/deployment-infra.git
             fi
             cd deployment-infra
+            echo "===== Writing .env file ====="
+            echo "MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}" > .env
+            echo "MYSQL_DB=${MYSQL_DB}" >> .env
             echo "===== Setting up Docker & Compose ====="
             sudo yum install -y docker
             sudo systemctl start docker
