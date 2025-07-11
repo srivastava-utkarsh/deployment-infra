@@ -3,6 +3,10 @@ name: Deploy CloudFormation and Microservices
 on:
   workflow_dispatch:
 
+env:
+  STACK_NAME: microservices-stack
+  AWS_REGION: ap-south-1
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -30,6 +34,9 @@ jobs:
           aws-region: ap-south-1
           role-session-name: GitHubActionsSession-${{ github.run_id }}
           role-duration-seconds: 3600
+
+      - name: ECR Login
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Validate CloudFormation Template
         run: aws cloudformation validate-template --template-body file://cloudformation.yml --region ap-south-1

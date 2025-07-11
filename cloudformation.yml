@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Microservices VPC with a single public subnet, EC2 in public subnet, parameterized KeyName and AmiId.
+Description: Microservices VPC with EC2, IAM role, latest Amazon Linux 2 AMI via SSM.
 
 Parameters:
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
   KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access
+    Description: Name of an existing EC2 KeyPair to enable SSH
     Type: AWS::EC2::KeyPair::KeyName
 
 Resources:
@@ -84,15 +84,39 @@ Resources:
         - Key: Name
           Value: MicroservicesSG
 
+  # --- IAM ROLE FOR EC2 ---
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+        # Add any other managed policies your EC2 needs (S3, CloudWatch, etc.)
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [ !Ref EC2InstanceRole ]
+      Path: /
+
   MicroservicesEC2:
     Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT15M  # 15 minutes, adjust as needed
+        Timeout: PT15M
     Properties:
       InstanceType: t3.micro
       ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref EC2InstanceProfile
       SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
         - !Ref MicroservicesSG
@@ -102,8 +126,15 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
-          # (Your setup commands here, for example install Docker, git, pull code, etc)
-          # At the end of your script, signal CloudFormation:
+          # Essential OS/Docker setup
+          yum update -y
+          amazon-linux-extras install docker -y
+          service docker start
+          usermod -a -G docker ec2-user
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          yum install git -y
+          # Optional: git clone your repo/setup here, or use deploy.sh by SSH or automation
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource MicroservicesEC2 --region ${AWS::Region}
 
 Outputs:
