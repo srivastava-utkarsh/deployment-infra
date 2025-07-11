@@ -41,8 +41,10 @@ echo "STEP 4: Write and verify .env file"
 echo "============================"
 echo "MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}" > .env
 echo "MYSQL_DB=${MYSQL_DB}" >> .env
+chmod 644 .env
 echo "[INFO] .env file contents:"
 cat .env
+ls -l .env
 if [ ! -s .env ]; then
   echo "[ERROR] .env file is empty or not created!"
   exit 1
@@ -63,14 +65,14 @@ echo "[INFO] Existing containers shut down."
 echo "============================"
 echo "STEP 7: Start Docker Compose stack"
 echo "============================"
-docker-compose up -d
+MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}" MYSQL_DB="${MYSQL_DB}" docker-compose up -d
 echo "[INFO] Docker Compose stack started."
 
 echo "============================"
 echo "STEP 8: Verify running containers"
 echo "============================"
 docker-compose ps
-docker logs $(docker-compose ps -q mysql) || true
+docker logs $(docker-compose ps -q 2025_mysql) || true
 
 echo "============================"
 echo "DEPLOYMENT COMPLETE"

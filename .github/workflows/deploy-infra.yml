@@ -163,6 +163,13 @@ jobs:
           script: |
             #!/bin/bash
             set -e
+            echo "===== Debugging environment variables ====="
+            echo "MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD"
+            echo "MYSQL_DB: $MYSQL_DB"
+            if [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$MYSQL_DB" ]; then
+              echo "ERROR: One or both environment variables are not set!"
+              exit 1
+            fi
             echo "===== Installing git if not present ====="
             if ! command -v git &> /dev/null; then
               sudo yum install git -y
@@ -176,11 +183,17 @@ jobs:
             echo "===== Writing .env file ====="
             echo "MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}" > .env
             echo "MYSQL_DB=${MYSQL_DB}" >> .env
+            echo "===== Verifying .env file ====="
+            cat .env
+            ls -l .env
+            if [ ! -s .env ]; then
+              echo "ERROR: .env file is empty or not created!"
+              exit 1
+            fi
             echo "===== Setting up Docker & Compose ====="
             sudo yum install -y docker
             sudo systemctl start docker
             sudo usermod -aG docker ec2-user
-            # (optional, if using compose v2 as plugin, install that here)
             echo "===== Running deploy.sh ====="
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh
