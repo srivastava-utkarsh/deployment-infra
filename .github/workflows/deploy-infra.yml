@@ -164,11 +164,13 @@ jobs:
             echo "MYSQL_DB=${{ secrets.MYSQL_DB }}" >> /home/ec2-user/deployment-infra/.env
             chmod 600 /home/ec2-user/deployment-infra/.env
             cd /home/ec2-user/deployment-infra
-            # Clone code if not already present
-            if [ ! -f ./deploy.sh ]; then
-              git clone https://github.com/srivastava-utkarsh/deployment-infra.git .
-            else
+            if [ -d .git ]; then
+              echo "[INFO] Repo already exists, pulling latest changes."
               git pull
+            else
+              echo "[INFO] Repo missing or corrupted, recloning."
+              rm -rf /home/ec2-user/deployment-infra/*
+              git clone https://github.com/srivastava-utkarsh/deployment-infra.git .
             fi
             chmod +x ./deploy.sh
             ./deploy.sh
