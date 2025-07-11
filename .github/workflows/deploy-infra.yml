@@ -160,11 +160,7 @@ jobs:
           script: |
             #!/bin/bash
             set -e
-            # Write .env file using GitHub secrets
-            if [ -z "${{ secrets.MYSQL_ROOT_PASSWORD }}" ] || [ -z "${{ secrets.MYSQL_DB }}" ]; then
-              echo "ERROR: One or both environment variables are not set!"
-              exit 1
-            fi
+            mkdir -p /home/ec2-user/deployment-infra
             echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ec2-user/deployment-infra/.env
             echo "MYSQL_DB=${{ secrets.MYSQL_DB }}" >> /home/ec2-user/deployment-infra/.env
             chmod 600 /home/ec2-user/deployment-infra/.env
