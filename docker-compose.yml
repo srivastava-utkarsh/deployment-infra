@@ -57,6 +57,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: secret_pw
       MYSQL_DATABASE: money_tracker
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DB: money_tracker
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
