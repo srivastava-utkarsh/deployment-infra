@@ -153,9 +153,6 @@ jobs:
 
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DB: ${{ secrets.MYSQL_DB }}
         with:
           host: ${{ env.EC2_HOST }}
           username: ec2-user
@@ -163,38 +160,16 @@ jobs:
           script: |
             #!/bin/bash
             set -e
-            echo "===== Debugging environment variables ====="
-            echo "MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD"
-            echo "MYSQL_DB: $MYSQL_DB"
-            if [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$MYSQL_DB" ]; then
+            # Write .env file using GitHub secrets
+            if [ -z "${{ secrets.MYSQL_ROOT_PASSWORD }}" ] || [ -z "${{ secrets.MYSQL_DB }}" ]; then
               echo "ERROR: One or both environment variables are not set!"
               exit 1
             fi
-            echo "===== Installing git if not present ====="
-            if ! command -v git &> /dev/null; then
-              sudo yum install git -y
-            fi
-            echo "===== Cloning repo if not present ====="
-            cd /home/ec2-user
-            if [ ! -d deployment-infra ]; then
-              git clone https://github.com/srivastava-utkarsh/deployment-infra.git
-            fi
-            cd deployment-infra
-            echo "===== Writing .env file ====="
-            echo "MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}" > .env
-            echo "MYSQL_DB=${MYSQL_DB}" >> .env
-            echo "===== Verifying .env file ====="
-            cat .env
-            ls -l .env
-            if [ ! -s .env ]; then
-              echo "ERROR: .env file is empty or not created!"
-              exit 1
-            fi
-            echo "===== Setting up Docker & Compose ====="
-            sudo yum install -y docker
-            sudo systemctl start docker
-            sudo usermod -aG docker ec2-user
-            echo "===== Running deploy.sh ====="
-            chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ec2-user/deployment-infra/.env
+            echo "MYSQL_DB=${{ secrets.MYSQL_DB }}" >> /home/ec2-user/deployment-infra/.env
+            chmod 600 /home/ec2-user/deployment-infra/.env
+            echo "[INFO] .env file written on remote server:"
+            cat /home/ec2-user/deployment-infra/.env
+            cd /home/ec2-user/deployment-infra
+            ./deploy.sh
 
