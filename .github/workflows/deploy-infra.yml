@@ -158,14 +158,18 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            #!/bin/bash
             set -e
             mkdir -p /home/ec2-user/deployment-infra
             echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > /home/ec2-user/deployment-infra/.env
             echo "MYSQL_DB=${{ secrets.MYSQL_DB }}" >> /home/ec2-user/deployment-infra/.env
             chmod 600 /home/ec2-user/deployment-infra/.env
-            echo "[INFO] .env file written on remote server:"
-            cat /home/ec2-user/deployment-infra/.env
             cd /home/ec2-user/deployment-infra
+            # Clone code if not already present
+            if [ ! -f ./deploy.sh ]; then
+              git clone https://github.com/srivastava-utkarsh/deployment-infra.git .
+            else
+              git pull
+            fi
+            chmod +x ./deploy.sh
             ./deploy.sh
 
