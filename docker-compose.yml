@@ -47,6 +47,8 @@ services:
   mysql:
     image: mysql:latest
     container_name: 2025_mysql
+    env_file:
+      - .env
     ports:
       - '3306:3306'
     healthcheck:

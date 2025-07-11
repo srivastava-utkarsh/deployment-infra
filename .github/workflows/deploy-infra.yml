@@ -44,16 +44,25 @@ jobs:
           git clone https://github.com/srivastava-utkarsh/gateway.git
           git clone https://github.com/srivastava-utkarsh/userservice.git
 
-      - name: Build and push Docker images to ECR
+      - name: Build and push Docker images to ECR (only if image doesn't exist)
         run: |
           for repo in authservice gateway userservice; do
             cd $repo
-            docker build -t 339495302685.dkr.ecr.ap-south-1.amazonaws.com/$repo:latest .
+            IMAGE_TAG=latest
+            IMAGE_URI=339495302685.dkr.ecr.ap-south-1.amazonaws.com/$repo:$IMAGE_TAG
             aws ecr describe-repositories --repository-names $repo || aws ecr create-repository --repository-name $repo
-            docker push 339495302685.dkr.ecr.ap-south-1.amazonaws.com/$repo:latest
+
+            # Only push if image:tag doesn't already exist in ECR
+            IMAGE_EXISTS=$(aws ecr list-images --repository-name $repo --filter tagStatus=TAGGED --query "imageIds[?imageTag=='$IMAGE_TAG'] | length(@)" --output text)
+            if [ "$IMAGE_EXISTS" -eq 0 ]; then
+              echo "Image $IMAGE_URI does not exist in ECR. Building and pushing..."
+              docker build -t $IMAGE_URI .
+              docker push $IMAGE_URI
+            else
+              echo "Image $IMAGE_URI already exists in ECR. Skipping build & push."
+            fi
             cd ..
           done
-
 
       - name: Validate CloudFormation Template
         run: aws cloudformation validate-template --template-body file://cloudformation.yml --region ap-south-1
