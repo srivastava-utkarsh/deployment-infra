@@ -153,6 +153,9 @@ jobs:
 
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@master
+        env:   # <-- NEW: Pass these secrets to SSH environment
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DB: ${{ secrets.MYSQL_DB }}
         with:
           host: ${{ env.EC2_HOST }}
           username: ec2-user
@@ -161,27 +164,28 @@ jobs:
             set -e
             TARGET_DIR=/home/ec2-user/deployment-infra
             REPO_URL=https://github.com/srivastava-utkarsh/deployment-infra.git
-            echo "[INFO] Making sure deployment-infra repo is up-to-date …"
-            if ssh -qT git@github.com 2>/dev/null; then
-              echo "[INFO] SSH key already added to known_hosts."
+            # -------- 1. make sure git exists -----------
+            if ! command -v git &>/dev/null; then
+              echo "[INFO] Installing git …"
+              sudo yum install -y git
             fi
+            # -------- 2. sync repo safely ---------------
+            echo "[INFO] Syncing deployment-infra repo …"
             if [ -d "$TARGET_DIR/.git" ]; then
-              # Directory exists **and** is a git repo ⇒ just pull
-              echo "[INFO] Repo exists, pulling latest changes."
-              git -C "$TARGET_DIR" pull --ff-only
+              git -C "$TARGET_DIR" fetch --all
+              git -C "$TARGET_DIR" reset --hard origin/main
             else
-              # Remove directory entirely (safer than rm -rf DIR/*)
-              echo "[INFO] Repo missing or corrupted. Recloning."
-              rm -rf "$TARGET_DIR"
-              git clone "$REPO_URL" "$TARGET_DIR"
+              sudo rm -rf "$TARGET_DIR"
+              git clone --depth 1 "$REPO_URL" "$TARGET_DIR"
             fi
-            # create .env (overwrite each time to avoid stale values)
+            # -------- 3. write secrets ------------------
             cat > "$TARGET_DIR/.env" <<EOF
-            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-            MYSQL_DB=${{ secrets.MYSQL_DB }}
+            MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+            MYSQL_DB=${MYSQL_DB}
             EOF
             chmod 600 "$TARGET_DIR/.env"
-            # run deploy script
+            # -------- 4. run deploy script --------------
             chmod +x "$TARGET_DIR/deploy.sh"
-            "$TARGET_DIR/deploy.sh"
+            cd "$TARGET_DIR"
+            ./deploy.sh
 
