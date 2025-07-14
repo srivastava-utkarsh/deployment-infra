@@ -113,7 +113,7 @@ Resources:
       ResourceSignal:
         Timeout: PT15M
     Properties:
-      InstanceType: t3.small
+      InstanceType: t3.medium
       ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyName
       IamInstanceProfile: !Ref EC2InstanceProfile
